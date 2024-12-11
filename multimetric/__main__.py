@@ -9,7 +9,6 @@ import os
 import sys
 import textwrap
 
-import chardet
 from pygments import lexers
 
 from multimetric.cls.importer.filtered import FilteredImporter
@@ -23,8 +22,10 @@ from multimetric.cls.modules import get_modules_stats
 def ArgParser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
-        prog="multimetric", description='Calculate code metrics in various languages',
-        epilog=textwrap.dedent("""
+        prog="multimetric",
+        description="Calculate code metrics in various languages",
+        epilog=textwrap.dedent(
+            """
         Currently you could import files of the following types for --warn_* or --coverage
 
         Following information can be read
@@ -46,48 +47,50 @@ def ArgParser():
                  ["content": <content>,]
                  "severity": <severity>
              }
-        """))
+        """
+        ),
+    )
     parser.add_argument(
         "--warn_compiler",
         default=None,
-        help="File(s) holding information about compiler warnings")
+        help="File(s) holding information about compiler warnings",
+    )
     parser.add_argument(
         "--warn_duplication",
         default=None,
-        help="File(s) holding information about code duplications")
+        help="File(s) holding information about code duplications",
+    )
     parser.add_argument(
         "--warn_functional",
         default=None,
-        help="File(s) holding information about static code analysis findings")
+        help="File(s) holding information about static code analysis findings",
+    )
     parser.add_argument(
         "--warn_standard",
         default=None,
-        help="File(s) holding information about language standard violations")
+        help="File(s) holding information about language standard violations",
+    )
     parser.add_argument(
         "--warn_security",
         default=None,
-        help="File(s) File(s) holding information about found security issue")
+        help="File(s) File(s) holding information about found security issue",
+    )
     parser.add_argument(
         "--coverage",
         default=None,
-        help="File(s) with compiler warningsFile(s) holding information about testing coverage")
+        help="File(s) with compiler warningsFile(s) holding information about testing coverage",
+    )
     parser.add_argument(
-        "--dump",
-        default=False,
-        action="store_true",
-        help="Just dump the token tree")
+        "--dump", default=False, action="store_true", help="Just dump the token tree"
+    )
     parser.add_argument(
-        "--verbose",
-        default=False,
-        action="store_true",
-        help="Verbose logging output")
+        "--verbose", default=False, action="store_true", help="Verbose logging output"
+    )
     parser.add_argument(
-        "--jobs",
-        type=int,
-        default=mp.cpu_count(),
-        help="Run x jobs in parallel")
+        "--jobs", type=int, default=mp.cpu_count(), help="Run x jobs in parallel"
+    )
     get_additional_parser_args(parser)
-    parser.add_argument("files", nargs='+', help="Files to parse")
+    parser.add_argument("files", nargs="+", help="Files to parse")
     return parser
 
 
@@ -97,21 +100,21 @@ def parse_args(*args):
     RUNARGS.files = [os.path.abspath(x) for x in RUNARGS.files]
 
     # Setup logging
-    stdout_log = logging.getLogger('stdout')
+    stdout_log = logging.getLogger("stdout")
     stdout_log.setLevel(logging.DEBUG if RUNARGS.verbose else logging.INFO)
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(logging.DEBUG if RUNARGS.verbose else logging.INFO)
-    formatter = logging.Formatter('%(message)s')
+    formatter = logging.Formatter("%(message)s")
     handler.setFormatter(formatter)
     stdout_log.addHandler(handler)
 
-    stderr_log = logging.getLogger('stderr')
+    stderr_log = logging.getLogger("stderr")
     stderr_log.setLevel(logging.DEBUG if RUNARGS.verbose else logging.INFO)
 
     handler = logging.StreamHandler(sys.stderr)
     handler.setLevel(logging.DEBUG if RUNARGS.verbose else logging.INFO)
-    formatter = logging.Formatter('%(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
     handler.setFormatter(formatter)
     stderr_log.addHandler(handler)
 
@@ -124,20 +127,28 @@ def file_process(_file, _args, _importer):
     try:
         _lexer = lexers.get_lexer_for_filename(_file)
     except ValueError:  # pragma: no cover - bug in pytest-cov
-        logging.getLogger('stderr').error(
-            f'The file {_file} could not be identified automatically. Skipping this file.')  # pragma: no cover - bug in pytest-cov
-        return ({}, _file, 'lexer.error', [], {})  # pragma: no cover - bug in pytest-cov
+        logging.getLogger("stderr").error(
+            f"The file {_file} could not be identified automatically. Skipping this file."
+        )  # pragma: no cover - bug in pytest-cov
+        return (
+            {},
+            _file,
+            "lexer.error",
+            [],
+            {},
+        )  # pragma: no cover - bug in pytest-cov
     try:
         with open(_file, "rb") as i:
-            _cnt = i.read()
-            _enc = chardet.detect(_cnt)
-            _cnt = _cnt.decode(_enc["encoding"]).encode("utf-8")
-        _localImporter = {k: FilteredImporter(
-            v, _file) for k, v in _importer.items()}
+            _cnt = i.read().decode("utf-8").encode("utf-8")
+            # _enc = chardet.detect(_cnt)
+            # _cnt = _cnt.decode(_enc["encoding"]).encode("utf-8")
+        _localImporter = {k: FilteredImporter(v, _file) for k, v in _importer.items()}
         tokens = list(_lexer.get_tokens(_cnt))
         if _args.dump:  # pragma: no cover
             for x in tokens:  # pragma: no cover
-                logging.getLogger('stdout').info(f"{_file}: {x[0]} -> {repr(x[1])}")  # pragma: no cover
+                logging.getLogger("stdout").info(
+                    f"{_file}: {x[0]} -> {repr(x[1])}"
+                )  # pragma: no cover
         else:
             _localMetrics = get_modules_metrics(_args, **_localImporter)
             _localCalc = get_modules_calculated(_args, **_localImporter)
@@ -149,7 +160,7 @@ def file_process(_file, _args, _importer):
                 res.update(x.get_results(res))
                 store.update(x.get_internal_store())
     except Exception as e:  # pragma: no cover
-        logging.getLogger('stderr').exception(e)  # pragma: no cover
+        logging.getLogger("stderr").exception(e)  # pragma: no cover
         tokens = []  # pragma: no cover
     return (res, _file, _lexer.name, tokens, store)
 
@@ -161,10 +172,8 @@ def run(_args):
     _importer = {}
     _importer["import_compiler"] = importer_pick(_args, _args.warn_compiler)
     _importer["import_coverage"] = importer_pick(_args, _args.coverage)
-    _importer["import_duplication"] = importer_pick(
-        _args, _args.warn_duplication)
-    _importer["import_functional"] = importer_pick(
-        _args, _args.warn_functional)
+    _importer["import_duplication"] = importer_pick(_args, _args.warn_duplication)
+    _importer["import_functional"] = importer_pick(_args, _args.warn_functional)
     _importer["import_security"] = importer_pick(_args, _args.warn_standard)
     _importer["import_standard"] = importer_pick(_args, _args.warn_security)
     # sanity check
@@ -175,15 +184,15 @@ def run(_args):
     _overallCalc = get_modules_calculated(_args, **_importer)
 
     with mp.Pool(processes=_args.jobs) as pool:
-        results = [pool.apply(file_process, args=(
-            f, _args, _importer)) for f in _args.files]
+        results = [
+            pool.apply(file_process, args=(f, _args, _importer)) for f in _args.files
+        ]
 
     for x in results:
         _result["files"][x[1]] = x[0]
 
     for y in _overallMetrics:
-        _result["overall"].update(
-            y.get_results_global([x[4] for x in results]))
+        _result["overall"].update(y.get_results_global([x[4] for x in results]))
     for y in _overallCalc:
         _result["overall"].update(y.get_results(_result["overall"]))
     for m in get_modules_stats(_args, **_importer):
@@ -208,8 +217,10 @@ def main():  # pragma: no cover
     _result = run(_args)  # pragma: no cover
     if not _args.dump:  # pragma: no cover
         # Output
-        logging.getLogger('stdout').info(json.dumps(_result, indent=2, sort_keys=True))  # pragma: no cover
+        logging.getLogger("stdout").info(
+            json.dumps(_result, indent=2, sort_keys=True)
+        )  # pragma: no cover
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()  # pragma: no cover
