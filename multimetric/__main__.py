@@ -139,7 +139,7 @@ def file_process(_file, _args, _importer):
         )  # pragma: no cover - bug in pytest-cov
     try:
         with open(_file, "rb") as i:
-            _cnt = i.read().decode("utf-8").encode("utf-8")
+            _cnt = i.read().decode("ascii").encode("utf-8")
             # _enc = chardet.detect(_cnt)
             # _cnt = _cnt.decode(_enc["encoding"]).encode("utf-8")
         _localImporter = {k: FilteredImporter(v, _file) for k, v in _importer.items()}
